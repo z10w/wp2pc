@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Device Bridge Server</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">DEVICE BRIDGE MVP</div>
+        <h1>Server status</h1>
+        <p class="muted">A small diagnostic page for the Android and Windows clients.</p>
+      </div>
+      <div id="statusPill" class="pill pending">Checking…</div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Worker</h2>
+        <div class="row"><span>Base URL</span><code id="baseUrl">-</code></div>
+        <div class="row"><span>WebSocket</span><code id="wsUrl">-</code></div>
+        <div class="row"><span>Health</span><strong id="healthText">Checking…</strong></div>
+      </article>
+
+      <article class="card">
+        <h2>WebSocket test</h2>
+        <label for="room">Test room</label>
+        <div class="inline">
+          <input id="room" maxlength="40" autocomplete="off">
+          <button id="newRoom" type="button">New</button>
+        </div>
+        <button id="connect" type="button" class="primary">Connect test client</button>
+        <pre id="log" aria-live="polite"></pre>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Endpoint expected by the apps</h2>
+      <div class="endpoint"><code id="endpointLarge">-</code></div>
+      <p class="muted small">The Android and Windows clients use the same Worker hostname. Pairing and file-transfer data will be handled by the Durable Object room in later MVP steps.</p>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

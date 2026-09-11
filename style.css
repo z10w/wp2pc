@@ -1,0 +1,34 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  color: #151515;
+  background: #f6f7f9;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 40px 22px 60px; }
+.hero { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 24px; }
+.eyebrow { font-size: 12px; letter-spacing: .14em; font-weight: 800; opacity: .55; }
+h1 { margin: 6px 0 8px; font-size: clamp(34px, 6vw, 52px); line-height: 1.05; }
+h2 { margin-top: 0; font-size: 20px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+.card { background: white; border: 1px solid #e3e5e8; border-radius: 18px; padding: 22px; box-shadow: 0 8px 30px rgba(0,0,0,.05); }
+.row { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid #eceef0; }
+.row:last-child { border-bottom: 0; }
+code, pre, input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { word-break: break-all; }
+.pill { padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 800; }
+.pill.ok { background: #def7e6; color: #146c2e; }
+.pill.bad { background: #ffe1e1; color: #8d1a1a; }
+.pill.pending { background: #eceef2; color: #4b5563; }
+.muted { color: #606773; }
+.small { font-size: 13px; }
+label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; }
+.inline { display: flex; gap: 8px; }
+input { flex: 1; min-width: 0; border: 1px solid #d4d8dd; border-radius: 10px; padding: 11px 12px; background: #fff; color: inherit; }
+button { border: 0; border-radius: 10px; padding: 11px 14px; font-weight: 800; cursor: pointer; }
+button.primary { width: 100%; margin-top: 10px; background: #171717; color: white; }
+button:not(.primary) { background: #eceef2; color: #222; }
+pre { min-height: 150px; margin: 14px 0 0; padding: 13px; border-radius: 12px; background: #111; color: #d7f9d7; overflow: auto; white-space: pre-wrap; }
+.endpoint { padding: 16px; border-radius: 12px; background: #f0f2f5; }
+@media (max-width: 740px) { .grid { grid-template-columns: 1fr; } .hero { flex-direction: column; } }
