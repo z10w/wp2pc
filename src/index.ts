@@ -179,5 +179,3 @@ export class PairRoom extends DurableObject {
   async webSocketError(ws:WebSocket){for(const p of this.ctx.getWebSockets())if(p!==ws&&p.readyState===WebSocket.OPEN)p.send(JSON.stringify({t:"peer_error"}));}
 }
 
-async function hashHex(s:string){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""));}
-function randomHex(bytes=32){const b=new Uint8Array(bytes);crypto.getRandomValues(b);return [...b].map(x=>x.toString(16).padStart(2,"0")).join("");}
