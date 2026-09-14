@@ -1,16 +1,24 @@
-# WP2PC Worker deployment
+# Deploy
 
-1. Create the R2 bucket once:
-   `npx wrangler r2 bucket create wp2pc-backups`
+1. Enable R2 in Cloudflare Dashboard.
+2. Create the bucket:
 
-2. Deploy:
-   `npm install`
-   `npx wrangler deploy`
+   npx wrangler r2 bucket create wp2pc-backups
 
-3. Worker URL:
-   `https://wp2pc.ceaxres.workers.dev`
+3. Install dependencies:
 
-4. WebSocket:
-   `wss://wp2pc.ceaxres.workers.dev/ws`
+   npm install
 
-The web app is served by the same Worker. R2 stores backup objects. The Worker never decrypts backup payloads.
+4. Check:
+
+   npm run check
+
+5. Test locally:
+
+   npm run dev
+
+6. Deploy:
+
+   npm run deploy
+
+The Worker is configured as `wp2pc` and uses `wp2pc-backups`.
