@@ -4,8 +4,9 @@
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "strict": true,
+    "skipLibCheck": true,
     "noEmit": true,
-    "lib": ["ES2022", "WebWorker"]
+    "types": ["@cloudflare/workers-types"]
   },
   "include": ["src/**/*.ts"]
 }
