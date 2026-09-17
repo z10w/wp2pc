@@ -1,4 +1,75 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WP2PC Cloud</title><link rel="stylesheet" href="/style.css"></head><body>
-<div class="wrap"><header><div><small>WP2PC CLOUD</small><h1>Backup Server</h1><p>Cloud backup and device connection control.</p></div><span id="status" class="pill">Checking…</span></header>
-<section class="grid"><div class="card"><h2>Connection</h2><label>Room ID</label><div class="row"><input id="room"><button id="newRoom">New</button></div><button id="connect">Connect PC</button><button id="disconnect" class="secondary">Disconnect</button><pre id="log"></pre></div>
-<div class="card"><h2>Cloud backups</h2><div class="row"><button id="refresh">Refresh</button><button id="backup" class="primary">Request Backup</button></div><div id="backups"></div></div></section></div><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WP2PC Cloud</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <small>WP2PC CLOUD</small>
+      <h1>Backup Server</h1>
+      <p>WhatsApp backup bridge — Android ↔ Cloudflare ↔ Windows</p>
+    </div>
+    <div class="status-bar">
+      <span class="status-label">Server</span><span id="st-server" class="pill">Checking…</span>
+      <span class="status-label">PC</span><span id="st-pc" class="pill">—</span>
+      <span class="status-label">Phone</span><span id="st-phone" class="pill">—</span>
+    </div>
+  </header>
+
+  <section class="grid">
+
+    <!-- Connection card -->
+    <div class="card">
+      <h2>Connection</h2>
+
+      <label>Room ID</label>
+      <div class="row">
+        <input id="room" spellcheck="false">
+        <button id="btnNewRoom">NEW ROOM</button>
+      </div>
+
+      <div class="btn-group">
+        <button id="btnConnect" class="primary">CONNECT PC</button>
+        <button id="btnDisconnect" class="secondary">DISCONNECT</button>
+      </div>
+
+      <div class="btn-group">
+        <button id="btnResetPairing" class="danger">RESET PC PAIRING</button>
+        <button id="btnTestServer">TEST SERVER</button>
+      </div>
+
+      <label style="margin-top:1rem">Room ID</label>
+      <div class="room-id" id="roomDisplay">—</div>
+    </div>
+
+    <!-- Cloud Backups card -->
+    <div class="card">
+      <h2>Cloud Backups</h2>
+
+      <div class="btn-group">
+        <button id="btnRefresh">REFRESH CLOUD BACKUPS</button>
+        <button id="btnRequestBackup" class="primary">REQUEST BACKUP</button>
+      </div>
+
+      <div id="backupList"></div>
+    </div>
+
+  </section>
+
+  <!-- Error / log section -->
+  <section class="log-section">
+    <div class="log-header">
+      <h2>Event Log</h2>
+      <button id="btnClearLog" class="secondary small">Clear</button>
+    </div>
+    <pre id="log"></pre>
+  </section>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

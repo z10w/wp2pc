@@ -1,1 +1,195 @@
-:root{font-family:Inter,system-ui,sans-serif;background:#f5f7fb;color:#14181f}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1050px;margin:auto;padding:32px 20px}header{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px}h1{margin:.2em 0}.pill{padding:7px 11px;border-radius:999px;background:#e7ebf1}.pill.ok{background:#d8f5df;color:#12662b}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:white;border:1px solid #e2e6eb;border-radius:16px;padding:20px;box-shadow:0 8px 28px #0000000b}.row{display:flex;gap:8px}input{width:100%;padding:11px;border:1px solid #ccd2da;border-radius:10px}button{margin-top:10px;border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer}button.primary{background:#111;color:#fff}button.secondary{background:#e8ebef}pre{background:#101317;color:#ccefd2;min-height:180px;padding:12px;border-radius:10px;white-space:pre-wrap}.backup{border:1px solid #e1e5ea;padding:12px;border-radius:12px;margin:10px 0}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a22;
+  --border: #2e2e3e;
+  --accent: #4f8ef7;
+  --accent-hover: #6ba3ff;
+  --danger: #e05252;
+  --danger-hover: #f07070;
+  --warn: #e09a30;
+  --ok: #4caf74;
+  --text: #e2e2ee;
+  --muted: #8888a8;
+  --font: 'Segoe UI', system-ui, sans-serif;
+  --radius: 10px;
+}
+
+html { font-size: 15px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+}
+
+/* ── Layout ────────────────────────────────────────────── */
+.wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+header small { color: var(--accent); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+header h1 { font-size: 1.6rem; margin: 0.2rem 0 0.3rem; }
+header p  { color: var(--muted); font-size: 0.88rem; }
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.status-label { color: var(--muted); font-size: 0.8rem; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Cards ─────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.card h2 { font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ── Form controls ─────────────────────────────────────── */
+label { font-size: 0.8rem; color: var(--muted); display: block; }
+
+input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: monospace;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.7rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus { border-color: var(--accent); }
+
+.row { display: flex; gap: 0.5rem; align-items: center; }
+
+.room-id {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* ── Buttons ───────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.55rem 1rem;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+  background: var(--border);
+  color: var(--text);
+}
+button:hover { opacity: 0.85; }
+
+button.primary  { background: var(--accent);  color: #fff; }
+button.secondary { background: #2a2a38; color: var(--text); }
+button.danger   { background: var(--danger);  color: #fff; }
+button.small    { font-size: 0.78rem; padding: 0.35rem 0.7rem; }
+
+.btn-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.btn-group button { flex: 1; min-width: 120px; }
+
+/* ── Status pills ──────────────────────────────────────── */
+.pill {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--border);
+  color: var(--muted);
+  min-width: 80px;
+  text-align: center;
+}
+.pill.ok    { background: #1a3a28; color: var(--ok); }
+.pill.warn  { background: #3a2e10; color: var(--warn); }
+.pill.error { background: #3a1818; color: var(--danger); }
+
+/* ── Backup list ────────────────────────────────────────── */
+#backupList { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.backup-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  flex-wrap: wrap;
+}
+.backup-info { flex: 1; min-width: 0; }
+.backup-info b { font-family: monospace; font-size: 0.82rem; word-break: break-all; }
+.backup-info small { color: var(--muted); font-size: 0.78rem; }
+.backup-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+.empty { color: var(--muted); font-size: 0.88rem; padding: 0.5rem 0; }
+
+/* ── Log ────────────────────────────────────────────────── */
+.log-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.log-header h2 { font-size: 0.9rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+#log {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #9999bb;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  height: 220px;
+  overflow-y: auto;
+  padding: 0.6rem 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
