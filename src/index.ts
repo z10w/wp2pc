@@ -114,7 +114,8 @@ async function initBackup(request: Request, env: Env, room: string) {
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const deviceId = String(body?.deviceId || "");
   const keyId = String(body?.keyId || "android-keystore-v1");
-  if (!(await auth(env, room, "phone", token(request), deviceId)))
+  const role = (request.headers.get("x-bridge-role") || "phone") as Role;
+  if (!(await auth(env, room, role, token(request), deviceId)))
     return json({ ok: false, error: "unauthorized" }, 401);
   const id = `b-${Date.now().toString(36)}-${randomHex(8)}`;
   const m: Manifest = {
@@ -130,7 +131,8 @@ async function initBackup(request: Request, env: Env, room: string) {
 
 async function putChunk(request: Request, env: Env, room: string, id: string, fi: number, ci: number) {
   if (!safeId(id)) return json({ ok: false, error: "invalid_id" }, 400);
-  if (!(await auth(env, room, "phone", token(request)))) return json({ ok: false, error: "unauthorized" }, 401);
+  const role = (request.headers.get("x-bridge-role") || "phone") as Role;
+  if (!(await auth(env, room, role, token(request)))) return json({ ok: false, error: "unauthorized" }, 401);
   const len = Number(request.headers.get("content-length") || 0);
   if (len > MAX_CHUNK) return json({ ok: false, error: "chunk_too_large" }, 413);
   const m = await manifest(env, room, id);
@@ -146,7 +148,8 @@ async function putChunk(request: Request, env: Env, room: string, id: string, fi
 
 async function complete(request: Request, env: Env, room: string, id: string) {
   if (!safeId(id)) return json({ ok: false, error: "invalid_id" }, 400);
-  if (!(await auth(env, room, "phone", token(request)))) return json({ ok: false, error: "unauthorized" }, 401);
+  const role = (request.headers.get("x-bridge-role") || "phone") as Role;
+  if (!(await auth(env, room, role, token(request)))) return json({ ok: false, error: "unauthorized" }, 401);
   const m = await request.json().catch(() => null) as Manifest | null;
   if (!m || m.backupId !== id) return json({ ok: false, error: "invalid_manifest" }, 400);
   if (!Array.isArray(m.files) || m.files.length > 10000) return json({ ok: false, error: "invalid_files" }, 400);
