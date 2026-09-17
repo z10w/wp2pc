@@ -325,49 +325,49 @@ export class PairRoom extends DurableObject {
     const device = u.searchParams.get("deviceId") || "";
     const mode = u.searchParams.get("mode") === "reconnect" ? "reconnect" : "pair";
 
-    // Replace any existing socket for the same role if the caller can authenticate
+    // Clean up / replace any existing socket for the same role
     const sockets = this.ctx.getWebSockets();
     let same: WebSocket | undefined;
     for (const ws of sockets) {
       const a = ws.deserializeAttachment() as { role?: string; deviceId?: string } | null;
-      if (a?.role === role && ws.readyState === WebSocket.OPEN) { same = ws; break; }
+      if (a?.role === role) {
+        same = ws;
+        try { ws.close(1000, "Replaced by new connection"); } catch { /* ignore */ }
+      }
     }
-    if (same) {
-      if (!(await this.valid(role, t, device))) return new Response("Already connected", { status: 409 });
-      try { same.close(1000, "Replaced"); } catch { /* ignore */ }
-    }
-
-    const active = this.ctx.getWebSockets().filter(w => w.readyState === WebSocket.OPEN && w !== same);
-    if (active.length >= 2) return new Response("Room full", { status: 409 });
 
     const existing = await this.record(role);
     let out = "";
     const effective = device || `${role}-${crypto.randomUUID()}`;
 
     if (mode === "reconnect") {
-      if (!(await this.valid(role, t, effective))) return new Response("Unauthorized", { status: 401 });
-    } else if (!existing) {
-      // First pairing — generate and store token
+      // Reconnect mode: must have valid token
+      if (!(await this.valid(role, t, effective))) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+    } else {
+      // mode === "pair": Always allow pairing or re-pairing
+      // Generate a fresh device token and store it
       const raw = randomHex(32);
       out = raw;
       await this.store().put(`token:${role}`, {
-        role, deviceId: effective, hash: await hashHex(raw),
+        role,
+        deviceId: effective,
+        hash: await hashHex(raw),
         expiresAt: Date.now() + TOKEN_TTL_DAYS_DEFAULT * 86_400_000,
       } satisfies TokenRecord);
-    } else if (t) {
-      if (!(await this.valid(role, t, effective))) return new Response("Unauthorized", { status: 401 });
-    } else {
-      return new Response("Already paired", { status: 409 });
     }
 
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
     pair[1].serializeAttachment({ role, deviceId: effective });
 
-    // Send token only on first pair
+    // Send token whenever newly paired
     if (out) {
       pair[1].send(JSON.stringify({
-        t: "device_token", token: out, deviceId: effective,
+        t: "device_token",
+        token: out,
+        deviceId: effective,
         expiresAt: Date.now() + TOKEN_TTL_DAYS_DEFAULT * 86_400_000,
       }));
     }
