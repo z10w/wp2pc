@@ -1,8 +1,6 @@
 (() => {
   // ── Storage keys ──────────────────────────────────────────────────────────
-  const ROOM_KEY   = 'wp2pc.room';
-  const TOKEN_KEY  = 'wp2pc.pcToken';
-  const DEVICE_KEY = 'wp2pc.pcDevice';
+  const ROOM_KEY = 'wp2pc.room';
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const roomInput     = /** @type {HTMLInputElement}  */ (document.getElementById('room'));
@@ -31,11 +29,12 @@
     el.className = 'pill' + (state ? ' ' + state : '');
   }
 
+  function storageKey(name, room = getRoom()) { return `wp2pc.${room}.pc.${name}`; }
   function getRoom()   { return roomInput.value.trim(); }
-  function getToken()  { return localStorage.getItem(TOKEN_KEY) || ''; }
+  function getToken()  { return localStorage.getItem(storageKey('token')) || ''; }
   function getDevice() {
-    let d = localStorage.getItem(DEVICE_KEY);
-    if (!d) { d = 'pc-' + crypto.randomUUID(); localStorage.setItem(DEVICE_KEY, d); }
+    let d = localStorage.getItem(storageKey('device'));
+    if (!d) { d = 'pc-' + crypto.randomUUID(); localStorage.setItem(storageKey('device'), d); }
     return d;
   }
 
@@ -51,7 +50,7 @@
   }
 
   function authHeaders() {
-    return { 'x-bridge-token': getToken(), 'x-bridge-role': 'pc' };
+    return { 'x-bridge-token': getToken(), 'x-bridge-role': 'pc', 'x-bridge-device': getDevice() };
   }
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
@@ -95,8 +94,8 @@
 
       switch (m.t) {
         case 'device_token':
-          localStorage.setItem(TOKEN_KEY, m.token);
-          localStorage.setItem(DEVICE_KEY, m.deviceId);
+          localStorage.setItem(storageKey('token'), m.token);
+          localStorage.setItem(storageKey('device'), m.deviceId);
           log('Pairing token saved (first pair)');
           break;
 
@@ -183,7 +182,7 @@
     };
 
     ws.onerror = () => {
-      log('WebSocket error', 'error');
+      log('WebSocket error. If this was an HTTP 409, clear/reset pairing for this room and pair intentionally.', 'error');
       setPill(stPc, 'Error', 'error');
     };
   }
@@ -208,8 +207,7 @@
       });
       const data = await res.json();
       if (data.ok) {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(DEVICE_KEY);
+        localStorage.removeItem(storageKey('token'));
         disconnect();
         log('Pairing reset — token cleared locally and on server');
         setPill(stPc, 'Reset', '');
@@ -337,6 +335,7 @@
     roomInput.value = r;
     roomDisplay.textContent = r;
     localStorage.setItem(ROOM_KEY, r);
+    localStorage.removeItem(storageKey('token', r));
     log(`New room ID: ${r}`);
   };
 

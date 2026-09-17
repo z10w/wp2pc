@@ -10,6 +10,14 @@ const MAX_BACKUPS_LIST = 100;
 // ─────────────────────────────────────────────────────────
 type Role = "phone" | "pc";
 type TokenRecord = { role: Role; deviceId: string; hash: string; expiresAt: number | null };
+type PairingErrorCode =
+  | "PAIRING_REQUIRED"
+  | "PAIRING_INVALID"
+  | "DEVICE_MISMATCH"
+  | "ROOM_MISMATCH"
+  | "PAIRING_EXPIRED"
+  | "ALREADY_CONNECTED"
+  | "PAIRING_RESET_REQUIRED";
 
 type FileMeta = {
   index: number;
@@ -54,6 +62,14 @@ function roomFrom(request: Request) {
 function validRoom(room: string) { return /^[A-Za-z0-9._:-]{8,96}$/.test(room); }
 function safeId(s: string) { return /^[A-Za-z0-9._:-]{8,120}$/.test(s); }
 function token(request: Request) { return request.headers.get("x-bridge-token")?.trim() || ""; }
+function deviceHeader(request: Request) { return request.headers.get("x-bridge-device")?.trim() || ""; }
+function roleHeader(request: Request): Role | null {
+  const role = request.headers.get("x-bridge-role");
+  return role === "phone" || role === "pc" ? role : null;
+}
+function jsonError(error: PairingErrorCode | string, message: string, status = 409, extra: Record<string, unknown> = {}) {
+  return json({ ok: false, error, message, ...extra }, status);
+}
 function hashHex(s: string) {
   return crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))
     .then(b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join(""));
@@ -85,20 +101,22 @@ async function auth(env: Env, room: string, role: Role, t: string, deviceId?: st
 //  Pairing reset (external)
 // ─────────────────────────────────────────────────────────
 async function resetPairing(request: Request, env: Env, room: string) {
-  // Caller must supply a valid token for either role to reset that role,
-  // OR supply the reset-secret header if we ever add one.
-  // For now: accept valid PC or phone token to reset the whole room.
   const t = token(request);
-  const role = (request.headers.get("x-bridge-role") || "pc") as Role;
-  if (!validRoom(room)) return json({ ok: false, error: "invalid_room" }, 400);
-  if (!t) return json({ ok: false, error: "missing_token" }, 401);
-  // Auth against either role
-  const authOk = await auth(env, room, role, t);
-  if (!authOk) return json({ ok: false, error: "unauthorized" }, 401);
-  // Call DO /reset
+  const role = roleHeader(request);
+  const deviceId = deviceHeader(request);
+  if (!validRoom(room)) return jsonError("ROOM_MISMATCH", "Invalid room ID.", 400);
+  if (!role) return jsonError("PAIRING_INVALID", "Reset requires x-bridge-role=phone or pc.", 400);
+  if (!deviceId) return jsonError("DEVICE_MISMATCH", "Reset requires the paired device ID.", 401);
+  if (!t) return jsonError("PAIRING_REQUIRED", "Reset requires a valid pairing token.", 401);
+  if (!(await auth(env, room, role, t, deviceId)))
+    return jsonError("PAIRING_INVALID", "Reset credentials do not match this room, role, and device.", 401);
+
   const stub = env.PAIR_ROOMS.get(env.PAIR_ROOMS.idFromName(room));
-  await stub.fetch(new Request("https://internal/reset", { method: "POST" }));
-  return json({ ok: true, message: "pairing_reset" });
+  const resetUrl = new URL("https://internal/reset");
+  resetUrl.searchParams.set("role", role);
+  resetUrl.searchParams.set("deviceId", deviceId);
+  await stub.fetch(new Request(resetUrl, { method: "POST" }));
+  return json({ ok: true, message: "pairing_reset", room, role, deviceId });
 }
 
 // ─────────────────────────────────────────────────────────
@@ -236,7 +254,8 @@ export default {
     }
 
     // Pairing reset
-    if (u.pathname === "/api/pairing/reset" && (request.method === "POST" || request.method === "DELETE")) {
+    if ((u.pathname === "/api/pairing/reset" || u.pathname === "/api/pair/reset") &&
+        (request.method === "POST" || request.method === "DELETE")) {
       return resetPairing(request, env, room);
     }
 
@@ -285,8 +304,14 @@ export class PairRoom extends DurableObject {
     if (device && r.deviceId !== device) return false;
     return (await hashHex(t)) === r.hash;
   }
+  private pairError(error: PairingErrorCode, message: string, status = 409, extra: Record<string, unknown> = {}) {
+    return jsonError(error, message, status, extra);
+  }
+  private log(event: string, data: Record<string, unknown>) {
+    console.log(JSON.stringify({ event, ...data }));
+  }
 
-  constructor(private ctx: DurableObjectState, env: Env) { super(ctx, env); }
+  constructor(ctx: DurableObjectState, env: Env) { super(ctx, env); }
 
   async fetch(request: Request) {
     const u = new URL(request.url);
@@ -304,13 +329,15 @@ export class PairRoom extends DurableObject {
 
     // ── Internal /reset RPC ─────────────────────────────
     if (u.pathname === "/reset" && request.method === "POST") {
-      // Close all open WebSockets with code 1008 (Policy Violation)
+      const role = u.searchParams.get("role") as Role | null;
+      const deviceId = u.searchParams.get("deviceId") || "";
       for (const ws of this.ctx.getWebSockets()) {
-        try { ws.close(1008, "Pairing reset"); } catch { /* already closed */ }
+        const a = ws.deserializeAttachment() as { role?: string; deviceId?: string } | null;
+        if (!role || (a?.role === role && a?.deviceId === deviceId)) {
+          try { ws.close(1008, "Pairing reset"); } catch { /* already closed */ }
+        }
       }
-      // Delete both token records
-      await this.store().delete("token:phone");
-      await this.store().delete("token:pc");
+      if (role === "phone" || role === "pc") await this.store().delete(`token:${role}`);
       return new Response("reset", { status: 200 });
     }
 
@@ -321,57 +348,88 @@ export class PairRoom extends DurableObject {
     const role = u.searchParams.get("role") as Role | null;
     if (role !== "phone" && role !== "pc") return new Response("Invalid role", { status: 400 });
 
+    const room = u.searchParams.get("room") || DEFAULT_ROOM;
     const t = u.searchParams.get("token") || "";
     const device = u.searchParams.get("deviceId") || "";
-    const mode = u.searchParams.get("mode") === "reconnect" ? "reconnect" : "pair";
+    const modeParam = u.searchParams.get("mode");
+    const mode = modeParam === "reconnect" ? "reconnect" : modeParam === "pair" ? "pair" : null;
+    if (!validRoom(room)) return this.pairError("ROOM_MISMATCH", "Invalid room ID.", 400, { room, role });
+    if (!mode) return this.pairError("PAIRING_INVALID", "mode must be pair or reconnect.", 400, { room, role });
+    if (!safeId(device)) return this.pairError("DEVICE_MISMATCH", "A stable deviceId is required.", 400, { room, role });
 
-    // Clean up / replace any existing socket for the same role
+    const existing = await this.record(role);
+    const now = Date.now();
+    let out = "";
+
+    if (mode === "pair") {
+      if (existing) {
+        this.log("pair_rejected_existing_pairing", { room, role, deviceId: device, storedDeviceId: existing.deviceId });
+        return this.pairError(
+          "PAIRING_RESET_REQUIRED",
+          "This role is already paired in this room. Reset pairing with valid credentials before pairing again.",
+          409,
+          { room, role, deviceId: device },
+        );
+      }
+      out = randomHex(32);
+      await this.store().put(`token:${role}`, {
+        role,
+        deviceId: device,
+        hash: await hashHex(out),
+        expiresAt: now + TOKEN_TTL_DAYS_DEFAULT * 86_400_000,
+      } satisfies TokenRecord);
+      this.log("pair_created", { room, role, deviceId: device });
+    } else {
+      if (!existing) {
+        this.log("reconnect_rejected_missing_pairing", { room, role, deviceId: device });
+        return this.pairError("PAIRING_REQUIRED", "No pairing exists for this role in this room. Connect in pair mode.", 409, { room, role, deviceId: device });
+      }
+      if (!t) {
+        this.log("reconnect_rejected_missing_token", { room, role, deviceId: device });
+        return this.pairError("PAIRING_REQUIRED", "Reconnect requires the stored pairing token.", 401, { room, role, deviceId: device });
+      }
+      if (existing.deviceId !== device) {
+        this.log("reconnect_rejected_device_mismatch", { room, role, deviceId: device, storedDeviceId: existing.deviceId });
+        return this.pairError("DEVICE_MISMATCH", "Stored token belongs to a different device for this room and role.", 409, { room, role, deviceId: device });
+      }
+      if (existing.expiresAt !== null && now >= existing.expiresAt) {
+        this.log("reconnect_rejected_expired", { room, role, deviceId: device });
+        return this.pairError("PAIRING_EXPIRED", "Pairing token has expired. Reset and pair again.", 409, { room, role, deviceId: device });
+      }
+      if ((await hashHex(t)) !== existing.hash) {
+        this.log("reconnect_rejected_bad_token", { room, role, deviceId: device });
+        return this.pairError("PAIRING_INVALID", "Pairing token is invalid for this room, role, and device.", 409, { room, role, deviceId: device });
+      }
+      this.log("reconnect_accepted", { room, role, deviceId: device });
+    }
+
     const sockets = this.ctx.getWebSockets();
-    let same: WebSocket | undefined;
     for (const ws of sockets) {
       const a = ws.deserializeAttachment() as { role?: string; deviceId?: string } | null;
       if (a?.role === role) {
-        same = ws;
-        try { ws.close(1000, "Replaced by new connection"); } catch { /* ignore */ }
+        if (a.deviceId === device) {
+          try { ws.close(1000, "Replaced by reconnect"); } catch { /* ignore */ }
+        } else {
+          this.log("connect_rejected_already_connected", { room, role, deviceId: device, activeDeviceId: a?.deviceId });
+          return this.pairError("ALREADY_CONNECTED", "Another device is already connected for this role.", 409, { room, role, deviceId: device });
+        }
       }
-    }
-
-    const existing = await this.record(role);
-    let out = "";
-    const effective = device || `${role}-${crypto.randomUUID()}`;
-
-    if (mode === "reconnect") {
-      // Reconnect mode: must have valid token
-      if (!(await this.valid(role, t, effective))) {
-        return new Response("Unauthorized", { status: 401 });
-      }
-    } else {
-      // mode === "pair": Always allow pairing or re-pairing
-      // Generate a fresh device token and store it
-      const raw = randomHex(32);
-      out = raw;
-      await this.store().put(`token:${role}`, {
-        role,
-        deviceId: effective,
-        hash: await hashHex(raw),
-        expiresAt: Date.now() + TOKEN_TTL_DAYS_DEFAULT * 86_400_000,
-      } satisfies TokenRecord);
     }
 
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
-    pair[1].serializeAttachment({ role, deviceId: effective });
+    pair[1].serializeAttachment({ role, deviceId: device });
 
     // Send token whenever newly paired
     if (out) {
       pair[1].send(JSON.stringify({
         t: "device_token",
         token: out,
-        deviceId: effective,
-        expiresAt: Date.now() + TOKEN_TTL_DAYS_DEFAULT * 86_400_000,
+        deviceId: device,
+        expiresAt: now + TOKEN_TTL_DAYS_DEFAULT * 86_400_000,
       }));
     }
-    pair[1].send(JSON.stringify({ t: "server_ready", role, room: u.searchParams.get("room") || DEFAULT_ROOM }));
+    pair[1].send(JSON.stringify({ t: "server_ready", role, room, mode }));
 
     // Notify all sockets of peer status
     const all = this.ctx.getWebSockets().filter(w => w.readyState === WebSocket.OPEN);
